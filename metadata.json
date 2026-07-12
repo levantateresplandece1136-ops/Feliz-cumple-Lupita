@@ -1,0 +1,6 @@
+{
+  "name": "El Viaje de una Vida",
+  "description": "Una aventura anime interactiva donde cada recuerdo de Lupita revela la fidelidad de Dios.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
