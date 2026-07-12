@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>✨ Un Viaje Llamado Lupita</title>
+<style>
+/* ============================================================
+   UN VIAJE LLAMADO LUPITA — para editar más fácil, busca:
+   - PHOTO_DATA_URI (más abajo en el <script>) → ahí va la foto de Lupita (estilo anime)
+   - LETTER_TEXT → el texto de la carta final
+   - Cada .scene-N controla el fondo/paleta de cada parada
+   ============================================================ */
+:root{
+  --dusk1:#2b2140;
+  --dusk2:#3a2b4d;
+  --peach:#f6c9a8;
+  --coral:#e8896b;
+  --gold:#e3b567;
+  --cream:#fbf3e7;
+  --ink:#2c2333;
+  --mist:rgba(255,255,255,0.14);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{
+  height:100%;
+  font-family:'Georgia','Times New Roman',serif;
+  background:var(--dusk1);
+  color:var(--cream);
+  overflow-x:hidden;
+}
+#app{
+  position:relative;
+  width:100%;
+  min-height:100vh;
+  overflow:hidden;
+}
+.screen{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:32px 24px;
+  text-align:center;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 1.1s ease;
+}
+.screen.active{
+  opacity:1;
+  pointer-events:auto;
+  position:relative;
+}
+.screen.leaving{
+  opacity:0;
+}
+
+/* ---------- Fondos tipo acuarela con CSS puro ---------- */
+.bg-wash{
+  position:absolute;
+  inset:0;
+  z-index:0;
+}
+.bg-wash::before,.bg-wash::after{
+  content:"";
+  position:absolute;
+  inset:0;
+}
+.bg-wash::before{
+  background:radial-gradient(ellipse at 50% 110%, var(--glow, #e8896b) 0%, transparent 60%);
+  opacity:0.55;
+  filter:blur(2px);
+}
+.bg-wash::after{
+  background:linear-gradient(180deg, var(--sky1,#2b2140) 0%, var(--sky2,#3a2b4d) 55%, var(--sky3,#1b1526) 100%);
+  z-index:-1;
+}
+.bg-grain{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  opacity:0.05;
+  background-image:radial-gradient(circle, #fff 1px, transparent 1px);
+  background-size:3px 3px;
+  pointer-events:none;
+}
+.silhouette{
+  position:absolute;
+  bottom:0;
+  left:0;
+  width:100%;
+  z-index:2;
+  opacity:0.9;
+}
+.sun{
+  position:absolute;
+  left:50%;
+  top:38%;
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle, var(--sun-c1,#f6c9a8) 0%, var(--sun-c2,#e8896b) 70%, transparent 100%);
+  box-shadow:0 0 60px 20px rgba(232,137,107,0.35);
+  z-index:1;
+}
+
+/* Bosque */
+.scene-bosque .bg-wash::before{--glow:#4c6b4f;}
+.scene-bosque .bg-wash::after{--sky1:#1c2b22;--sky2:#2e4536;--sky3:#101a14;}
+.scene-bosque .sun{--sun-c1:#d8dfb0;--sun-c2:#8fa46a;opacity:0.5;top:30%;}
+
+/* Cabaña */
+.scene-cabana .bg-wash::before{--glow:#c96a3e;}
+.scene-cabana .bg-wash::after{--sky1:#1c1420;--sky2:#3a2418;--sky3:#120d10;}
+.scene-cabana .sun{--sun-c1:#ffcf8a;--sun-c2:#e3743a;top:65%;width:90px;height:90px;}
+
+/* Selva */
+.scene-selva .bg-wash::before{--glow:#2f6b4f;}
+.scene-selva .bg-wash::after{--sky1:#0f2318;--sky2:#164028;--sky3:#0a160f;}
+.scene-selva .sun{--sun-c1:#eefcb0;--sun-c2:#4f9e6a;opacity:0.4;}
+
+/* Cascadas */
+.scene-cascadas .bg-wash::before{--glow:#4d9bb8;}
+.scene-cascadas .bg-wash::after{--sky1:#122636;--sky2:#1e4258;--sky3:#0b1a24;}
+.scene-cascadas .sun{--sun-c1:#d9f4ff;--sun-c2:#5fa9c4;opacity:0.55;}
+
+/* Playa */
+.scene-playa .bg-wash::before{--glow:#e8a25f;}
+.scene-playa .bg-wash::after{--sky1:#2c1f3a;--sky2:#7a4a4f;--sky3:#3a2634;}
+.scene-playa .sun{--sun-c1:#ffe1a8;--sun-c2:#e8896b;top:55%;}
+
+/* Alberca de noche */
+.scene-alberca .bg-wash::before{--glow:#3d5a8c;}
+.scene-alberca .bg-wash::after{--sky1:#0c0f26;--sky2:#161c3d;--sky3:#080a18;}
+.scene-alberca .sun{display:none;}
+
+/* Intro / final */
+.scene-intro .bg-wash::after,.scene-final .bg-wash::after{--sky1:#241a34;--sky2:#3a2b4d;--sky3:#160f22;}
+.scene-intro .bg-wash::before,.scene-final .bg-wash::before{--glow:#e3b567;}
+
+/* ---------- Estrellas ---------- */
+.stars{position:absolute;inset:0;z-index:1;}
+.star{
+  position:absolute;
+  width:2px;height:2px;
+  background:#fff;
+  border-radius:50%;
+  opacity:0.7;
+  animation:twinkle 3.5s ease-in-out infinite;
+}
+@keyframes twinkle{0%,100%{opacity:0.2;}50%{opacity:0.9;}}
+
+/* ---------- Contenido ---------- */
+.content{
+  position:relative;
+  z-index:5;
+  max-width:640px;
+  width:100%;
+}
+.eyebrow{
+  font-family:'Trebuchet MS',sans-serif;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  font-size:12px;
+  color:var(--gold);
+  margin-bottom:14px;
+  opacity:0.9;
+}
+h1.title{
+  font-size:clamp(28px,7vw,44px);
+  font-weight:400;
+  line-height:1.25;
+  margin-bottom:16px;
+  text-shadow:0 2px 18px rgba(0,0,0,0.35);
+}
+.virtue-word{
+  color:var(--gold);
+  font-style:italic;
+}
+p.lead{
+  font-size:clamp(15px,3.6vw,18px);
+  line-height:1.75;
+  color:var(--cream);
+  opacity:0.92;
+  margin-bottom:26px;
+  font-family:'Trebuchet MS',sans-serif;
+  font-weight:300;
+}
+.item-card{
+  display:inline-flex;
+  align-items:center;
+  gap:12px;
+  background:var(--mist);
+  border:1px solid rgba(255,255,255,0.25);
+  padding:14px 22px;
+  border-radius:40px;
+  margin-bottom:30px;
+  backdrop-filter:blur(4px);
+  font-family:'Trebuchet MS',sans-serif;
+  font-size:14px;
+}
+.item-icon{font-size:20px;}
+
+/* ---------- Botones ---------- */
+.btn{
+  font-family:'Trebuchet MS',sans-serif;
+  font-size:15px;
+  letter-spacing:1px;
+  padding:14px 34px;
+  border-radius:40px;
+  border:1.5px solid var(--gold);
+  background:transparent;
+  color:var(--cream);
+  cursor:pointer;
+  transition:all 0.3s ease;
+}
+.btn:hover{
+  background:var(--gold);
+  color:var(--ink);
+}
+.btn-ghost{
+  border-color:rgba(255,255,255,0.35);
+  font-size:13px;
+  padding:10px 22px;
+  opacity:0.75;
+}
+
+/* ---------- Maleta / progreso ---------- */
+.suitcase-track{
+  position:fixed;
+  bottom:22px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:10px;
+  z-index:50;
+}
+.suitcase-dot{
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.25);
+  transition:all 0.4s ease;
+}
+.suitcase-dot.filled{
+  background:var(--gold);
+  box-shadow:0 0 8px var(--gold);
+}
+
+/* ---------- Foto intro ---------- */
+.photo-frame{
+  width:180px;
+  height:180px;
+  border-radius:50%;
+  margin:0 auto 22px;
+  border:3px solid var(--gold);
+  box-shadow:0 0 40px rgba(227,181,103,0.4);
+  overflow:hidden;
+  background:linear-gradient(135deg,#3a2b4d,#241a34);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:44px;
+}
+.photo-frame img{width:100%;height:100%;object-fit:cover;}
+
+/* ---------- Maleta visual final ---------- */
+.suitcase-visual{
+  display:flex;
+  flex-wrap:wrap;
+  gap:14px;
+  justify-content:center;
+  margin:22px 0 30px;
+}
+.packed-item{
+  background:var(--mist);
+  border:1px solid rgba(255,255,255,0.25);
+  border-radius:16px;
+  padding:14px 16px;
+  width:120px;
+  font-family:'Trebuchet MS',sans-serif;
+  font-size:12px;
+  line-height:1.4;
+}
+.packed-item .icon{font-size:26px;display:block;margin-bottom:6px;}
+
+/* ---------- Carta ---------- */
+.letter-box{
+  background:var(--cream);
+  color:var(--ink);
+  border-radius:6px;
+  padding:38px 30px;
+  text-align:left;
+  font-family:'Georgia',serif;
+  font-size:15px;
+  line-height:1.9;
+  white-space:pre-wrap;
+  box-shadow:0 20px 60px rgba(0,0,0,0.4);
+  max-height:55vh;
+  overflow-y:auto;
+}
+
+/* ---------- Botón de audio ---------- */
+.audio-toggle{
+  position:fixed;
+  top:18px;
+  right:18px;
+  z-index:60;
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  background:var(--mist);
+  border:1px solid rgba(255,255,255,0.3);
+  color:var(--cream);
+  font-size:16px;
+  cursor:pointer;
+  backdrop-filter:blur(4px);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width:480px){
+  .letter-box{padding:26px 20px;font-size:14px;}
+  .packed-item{width:100px;}
+}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+<div class="suitcase-track" id="suitcaseTrack"></div>
+<button class="audio-toggle" id="audioToggle" title="Sonido">🔇</button>
+
+<script>
+/* ============================================================
+   CONFIGURACIÓN EDITABLE
+   ============================================================ */
+
+// 📷 Foto de Lupita (estilo anime) — pega aquí un data URI base64 cuando la tengas.
+// Ejemplo: const PHOTO_DATA_URI = 'data:image/jpeg;base64,/9j/4AAQ...';
+const PHOTO_DATA_URI = '';
+
+// 📩 Carta final — edítala directamente aquí.
+const LETTER_TEXT = `Lupita...
+
+Hoy quiero que sepas todo lo que veo en ti: tu lealtad que no
+se dobla, tu inteligencia que no descansa, tu manera de emprender
+sin miedo, la confianza que inspiras en quienes te rodean, tu
+palabra sabia cuando alguien la necesita, y ese interés genuino
+que tienes por las personas, siempre.
+
+Este viaje no es solo un regalo, es un espejo. Cada lugar, cada
+cosa en tu maleta, es algo que ya llevas contigo.
+
+Feliz cumpleaños, viajera. Que este nuevo año te lleve a lugares
+tan hermosos como los que tú creas para los demás.
+
+Con todo mi cariño,
+Tu amigo`;
+
+// 🌍 Las 6 paradas del viaje
+const STOPS = [
+  {
+    id: 'bosque',
+    eyebrow: 'Primera parada',
+    place: 'El Bosque',
+    virtue: 'Lealtad',
+    text: 'Como los árboles que no se mueven de su lugar aunque venga la tormenta, tu lealtad es esa raíz profunda que nunca falla. Quienes te tenemos cerca lo sabemos: contigo, siempre se puede contar.',
+    item: { icon: '🧭', name: 'Una brújula', reason: 'porque tu lealtad siempre marca el norte para quienes te rodean' },
+    scene: 'scene-bosque'
+  },
+  {
+    id: 'cabana',
+    eyebrow: 'Segunda parada',
+    place: 'La Cabaña',
+    virtue: 'Confiable',
+    text: 'Frente al fuego, en la calidez de una cabaña, es donde se cuentan los secretos que importan. Y tú eres ese lugar seguro para tantas personas: donde se puede hablar sin miedo a ser juzgado.',
+    item: { icon: '🔑', name: 'Una llave', reason: 'porque contigo las puertas del corazón se abren sin miedo' },
+    scene: 'scene-cabana'
+  },
+  {
+    id: 'selva',
+    eyebrow: 'Tercera parada',
+    place: 'La Selva',
+    virtue: 'Inteligente y trabajadora',
+    text: 'En medio de lo denso y lo incierto, tú siempre encuentras el camino. Tu mente despierta y tus manos que no paran de trabajar son un mapa que muchos seguimos sin siquiera dártelo a saber.',
+    item: { icon: '📖', name: 'Un mapa viejo', reason: 'porque tu inteligencia siempre encuentra la ruta, aunque nadie más la vea' },
+    scene: 'scene-selva'
+  },
+  {
+    id: 'cascadas',
+    eyebrow: 'Cuarta parada',
+    place: 'Las Cascadas',
+    virtue: 'Emprendedora',
+    text: 'El agua que cae con fuerza no le teme a la caída, porque sabe que del otro lado hay algo nuevo. Así eres tú: lanzándote a lo desconocido con una valentía que inspira a quien te ve.',
+    item: { icon: '🎒', name: 'Una mochila resistente', reason: 'porque tu espíritu emprendedor siempre está listo para el siguiente salto' },
+    scene: 'scene-cascadas'
+  },
+  {
+    id: 'playa',
+    eyebrow: 'Quinta parada',
+    place: 'La Playa al Atardecer',
+    virtue: 'Consejera',
+    text: 'Frente al mar, donde todo se vuelve quieto, tus palabras siempre llegan en el momento justo. Sabes escuchar, sabes callar cuando hace falta, y sabes decir lo que otros necesitan oír.',
+    item: { icon: '🐚', name: 'Una concha de mar', reason: 'porque tus consejos, como el mar, siempre dejan algo hermoso detrás' },
+    scene: 'scene-playa'
+  },
+  {
+    id: 'alberca',
+    eyebrow: 'Sexta parada',
+    place: 'La Alberca, de noche',
+    virtue: 'Se interesa por las personas',
+    text: 'Bajo las estrellas, flotando sin prisa, es donde de verdad se ve a alguien. Y tú ves a las personas. De verdad las ves: sus días buenos, sus días difíciles, todo lo que a veces ni ellas notan.',
+    item: { icon: '🕯️', name: 'Un farol pequeño', reason: 'porque tu interés genuino ilumina a quien esté cerca de ti' },
+    scene: 'scene-alberca'
+  }
+];
+
+/* ============================================================
+   MOTOR — no es necesario editar de aquí en adelante
+   ============================================================ */
+
+const app = document.getElementById('app');
+const suitcaseTrack = document.getElementById('suitcaseTrack');
+let currentIndex = 0;
+let audioEnabled = false;
+let audioCtx = null;
+
+// Construye la secuencia de pantallas: intro -> 6 paradas -> maleta final -> carta
+const SEQUENCE = ['intro', ...STOPS.map(s => s.id), 'maleta', 'carta'];
+
+function buildStars(count){
+  let html = '<div class="stars">';
+  for(let i=0;i<count;i++){
+    const top = Math.random()*70;
+    const left = Math.random()*100;
+    const delay = (Math.random()*3).toFixed(2);
+    html += `<div class="star" style="top:${top}%;left:${left}%;animation-delay:${delay}s;"></div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderIntro(){
+  const photoInner = PHOTO_DATA_URI
+    ? `<img src="${PHOTO_DATA_URI}" alt="Lupita">`
+    : `🌅`;
+  return `
+    <div class="screen scene-intro" data-id="intro">
+      <div class="bg-wash"></div>
+      <div class="bg-grain"></div>
+      ${buildStars(40)}
+      <div class="content">
+        <div class="photo-frame">${photoInner}</div>
+        <div class="eyebrow">Un regalo de cumpleaños</div>
+        <h1 class="title">Un Viaje Llamado <span class="virtue-word">Lupita</span></h1>
+        <p class="lead">Hoy vamos a recorrer seis lugares. En cada uno hay algo tuyo esperando —
+        una virtud que llevas contigo a donde sea que vayas. Al final, armaremos juntas tu maleta.</p>
+        <button class="btn" onclick="goNext()">Comenzar el viaje ✦</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderStop(stop, index){
+  return `
+    <div class="screen ${stop.scene}" data-id="${stop.id}">
+      <div class="bg-wash"></div>
+      <div class="bg-grain"></div>
+      ${buildStars(28)}
+      <div class="sun"></div>
+      <div class="content">
+        <div class="eyebrow">${stop.eyebrow} · ${stop.place}</div>
+        <h1 class="title">Eres <span class="virtue-word">${stop.virtue}</span></h1>
+        <p class="lead">${stop.text}</p>
+        <div class="item-card">
+          <span class="item-icon">${stop.item.icon}</span>
+          <span>Guardas en tu maleta: <strong>${stop.item.name}</strong></span>
+        </div>
+        <br>
+        <button class="btn" onclick="goNext()">Seguir viajando ✦</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderMaleta(){
+  const items = STOPS.map(s => `
+    <div class="packed-item">
+      <span class="icon">${s.item.icon}</span>
+      <strong>${s.item.name}</strong><br>
+      <span style="opacity:0.75;">${s.item.reason}</span>
+    </div>
+  `).join('');
+  return `
+    <div class="screen scene-final" data-id="maleta">
+      <div class="bg-wash"></div>
+      <div class="bg-grain"></div>
+      ${buildStars(35)}
+      <div class="content">
+        <div class="eyebrow">Tu maleta está lista</div>
+        <h1 class="title">Todo esto <span class="virtue-word">ya lo llevas</span></h1>
+        <p class="lead">No tuviste que empacar nada de esto. Siempre lo has traído contigo.</p>
+        <div class="suitcase-visual">${items}</div>
+        <button class="btn" onclick="goNext()">Leer una carta ✦</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderCarta(){
+  return `
+    <div class="screen scene-final" data-id="carta">
+      <div class="bg-wash"></div>
+      <div class="bg-grain"></div>
+      ${buildStars(25)}
+      <div class="content">
+        <div class="eyebrow">Para ti, viajera</div>
+        <h1 class="title">Feliz <span class="virtue-word">Cumpleaños</span></h1>
+        <div class="letter-box">${LETTER_TEXT}</div>
+        <br>
+        <button class="btn btn-ghost" onclick="restart()">Volver a empezar el viaje</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderAll(){
+  let html = renderIntro();
+  STOPS.forEach((s,i) => html += renderStop(s,i));
+  html += renderMaleta();
+  html += renderCarta();
+  app.innerHTML = html;
+
+  // suitcase dots (una por parada, no cuenta intro/maleta/carta)
+  suitcaseTrack.innerHTML = STOPS.map((_,i) =>
+    `<div class="suitcase-dot" data-stop-index="${i}"></div>`
+  ).join('');
+
+  showScreen(0);
+}
+
+function showScreen(index){
+  const screens = document.querySelectorAll('.screen');
+  screens.forEach(s => s.classList.remove('active','leaving'));
+  screens[index].classList.add('active');
+  currentIndex = index;
+  updateDots();
+  playSceneAudio(SEQUENCE[index]);
+}
+
+function updateDots(){
+  const dots = document.querySelectorAll('.suitcase-dot');
+  const stopIdx = SEQUENCE.slice(0,currentIndex+1).filter(id => STOPS.some(s=>s.id===id)).length;
+  dots.forEach((d,i) => {
+    d.classList.toggle('filled', i < stopIdx);
+  });
+  // ocultar dots en intro/carta si se prefiere, aquí las dejamos visibles siempre
+}
+
+function goNext(){
+  if(currentIndex < SEQUENCE.length - 1){
+    showScreen(currentIndex + 1);
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+}
+
+function restart(){
+  showScreen(0);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ============================================================
+   AUDIO AMBIENTAL — generado con Web Audio API (sin archivos externos)
+   Cada escena tiene un paisaje sonoro simple: viento, fuego, selva,
+   agua cayendo, olas, o silencio acuático nocturno.
+   ============================================================ */
+let currentNodes = [];
+
+function stopAudio(){
+  currentNodes.forEach(n => { try{ n.stop && n.stop(); n.disconnect && n.disconnect(); }catch(e){} });
+  currentNodes = [];
+}
+
+function ensureAudioCtx(){
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function whiteNoiseBuffer(ctx, duration=2){
+  const bufferSize = ctx.sampleRate * duration;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i=0;i<bufferSize;i++){ data[i] = Math.random()*2-1; }
+  return buffer;
+}
+
+function playSceneAudio(sceneId){
+  stopAudio();
+  if(!audioEnabled) return;
+  ensureAudioCtx();
+  const ctx = audioCtx;
+
+  const master = ctx.createGain();
+  master.gain.value = 0.0;
+  master.connect(ctx.destination);
+  master.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 1.2);
+  currentNodes.push(master);
+
+  const noise = ctx.createBufferSource();
+  noise.buffer = whiteNoiseBuffer(ctx, 4);
+  noise.loop = true;
+
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+
+  // Configuración por escena
+  const config = {
+    bosque:   { type:'bandpass', freq:600,  q:0.6, gain:0.25 }, // viento entre árboles
+    cabana:   { type:'lowpass',  freq:900,  q:0.4, gain:0.30 }, // crepitar suave / calidez
+    selva:    { type:'bandpass', freq:1200, q:1.2, gain:0.22 }, // aire denso y vivo
+    cascadas: { type:'lowpass',  freq:2200, q:0.3, gain:0.42 }, // caudal de agua
+    playa:    { type:'lowpass',  freq:1400, q:0.5, gain:0.35 }, // olas
+    alberca:  { type:'lowpass',  freq:500,  q:0.3, gain:0.15 }, // quietud nocturna
+    intro:    { type:'lowpass',  freq:800,  q:0.3, gain:0.12 },
+    maleta:   { type:'lowpass',  freq:800,  q:0.3, gain:0.12 },
+    carta:    { type:'lowpass',  freq:600,  q:0.3, gain:0.10 }
+  };
+  const c = config[sceneId] || config.intro;
+
+  filter.type = c.type;
+  filter.frequency.value = c.freq;
+  filter.Q.value = c.q;
+  gain.gain.value = c.gain;
+
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(master);
+  noise.start();
+
+  currentNodes.push(noise, filter, gain);
+
+  // Modulación lenta para que no suene estático (como viento/olas respirando)
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.frequency.value = (sceneId === 'cascadas' || sceneId === 'playa') ? 0.15 : 0.08;
+  lfoGain.gain.value = c.gain * 0.4;
+  lfo.connect(lfoGain);
+  lfoGain.connect(gain.gain);
+  lfo.start();
+  currentNodes.push(lfo, lfoGain);
+}
+
+const audioToggle = document.getElementById('audioToggle');
+audioToggle.addEventListener('click', () => {
+  audioEnabled = !audioEnabled;
+  audioToggle.textContent = audioEnabled ? '🔊' : '🔇';
+  if(audioEnabled){
+    ensureAudioCtx();
+    playSceneAudio(SEQUENCE[currentIndex]);
+  } else {
+    stopAudio();
+  }
+});
+
+renderAll();
+</script>
+</body>
+</html>
